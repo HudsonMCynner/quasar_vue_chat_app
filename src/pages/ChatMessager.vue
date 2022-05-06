@@ -92,6 +92,7 @@
 </template>
 
 <script>
+import Peer from 'peerjs'
 import { date } from 'quasar'
 export default {
   name: 'ChatMessager',
@@ -102,7 +103,7 @@ export default {
     }
   },
   created () {
-    this.conn = new window.Peer()
+    this.conn = new Peer()
     this.model = this.value
     this.conn.on('open', (id) => {
       this.myId = id
@@ -125,6 +126,10 @@ export default {
         this.status = 'DICONNECTED'
       })
       this.connection.send({ status: 'OK' })
+    })
+
+    this.conn.on('error', (err) => {
+      console.log('~> Err', err.type)
     })
   },
   data: () => ({
