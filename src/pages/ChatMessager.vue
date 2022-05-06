@@ -91,7 +91,6 @@ export default {
   }),
   methods: {
     sendMessage () {
-      debugger
       if (this.connection) {
         if (this.message) {
           const mensagem = {
@@ -107,7 +106,6 @@ export default {
       }
     },
     connect () {
-      debugger
       if (this.otherPeerId) {
         if (this.connection) {
           this.connection.close()
