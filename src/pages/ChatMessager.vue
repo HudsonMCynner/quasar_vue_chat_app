@@ -10,7 +10,7 @@
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 q-pa-sm">
         <q-input dense outlined v-model="otherPeerId" label="ID Remetente" :disable="status === 'CONNECTED'" >
           <template v-slot:after>
-            <q-btn outlined label="Conectar" @click="connect"/>
+            <q-btn outlined :label="status === 'CONNECTED' ? 'Desconectar' : 'Conectar'" @click="status === 'CONNECTED' ? disconnet() : connect()"/>
           </template>
         </q-input>
       </div>
@@ -114,6 +114,12 @@ export default {
       this.connection.on('data', (data) => {
         this.mensagens.push(data)
       })
+      this.connection.on('open', () => {
+        this.status = 'CONNECTED'
+      })
+      this.connection.on('close', () => {
+        this.status = 'DICONNECTED'
+      })
       this.connection.send({ status: 'OK' })
     })
   },
@@ -172,6 +178,9 @@ export default {
         }
       }
     },
+    disconnet () {
+      this.connection.close()
+    },
     connect () {
       if (this.otherPeerId === this.myId) {
         return
@@ -186,6 +195,9 @@ export default {
         })
         this.connection.on('open', () => {
           this.status = 'CONNECTED'
+        })
+        this.connection.on('close', () => {
+          this.status = 'DICONNECTED'
         })
       }
     }
