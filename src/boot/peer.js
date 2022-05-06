@@ -1,5 +1,5 @@
 import { boot } from 'quasar/wrappers'
-const Peer = new window.Peer()
+import Peer from 'peerjs'
 let PeerId = null
 
 export const openPeer = () => {
