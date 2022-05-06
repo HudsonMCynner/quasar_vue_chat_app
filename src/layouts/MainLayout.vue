@@ -53,31 +53,6 @@ export default defineComponent({
     Contacts,
     ChatMessager
   },
-  createdes () {
-    this.peer = new window.Peer()
-    this.peer.on('open', (id) => {
-      // console.log('My peer ID is: ' + id)
-      this.connectionID = id
-    })
-
-    this.peer.on('connection', (conn) => {
-      // console.log('~> Connection')
-      conn.on('data', (data) => {
-        // Will print 'hi!'
-        console.log(data)
-        if (data.file) {
-          const link = document.createElement('a')
-          link.href = URL.createObjectURL(new Blob([data.file], { type: data.type }))
-          link.download = data.name
-          link.click()
-          // document.removeChild(link)
-        }
-      })
-      conn.on('open', () => {
-        conn.send('hello!')
-      })
-    })
-  },
   setup () {
     const leftDrawerOpen = ref(false)
     const rigthDrawerOpen = ref(false)
@@ -90,35 +65,6 @@ export default defineComponent({
       toggleRightDrawer () {
         rigthDrawerOpen.value = !rigthDrawerOpen.value
       }
-    }
-  },
-  methods: {
-    connect () {
-      this.conn = this.peer.connect(this.otherConId)
-      this.conn.on('open', () => {
-        this.conn.send('hi!')
-      })
-    },
-    enviarArquivo () {
-      console.log('~> ', this.files)
-      this.conn.send({
-        type: this.files.type,
-        name: this.files.name,
-        file: this.files
-      })
-    }
-  },
-  data: () => ({
-    conn: null,
-    connection: null,
-    peer: null,
-    connectionID: null,
-    otherConId: null,
-    files: null
-  }),
-  computed: {
-    getId () {
-      return this.connectionID
     }
   }
 })
