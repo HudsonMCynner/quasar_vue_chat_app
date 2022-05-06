@@ -113,7 +113,6 @@ export default {
       this.connection = NACoon
       this.connection.on('data', (data) => {
         this.mensagens.push(data)
-        console.log('~> ', data)
       })
       this.connection.send({ status: 'OK' })
     })
@@ -139,7 +138,6 @@ export default {
       link.click()
     },
     enviarArquivos () {
-      debugger
       if (this.connection) {
         this.arquivos.forEach((arquivo) => {
           const mensagem = {
