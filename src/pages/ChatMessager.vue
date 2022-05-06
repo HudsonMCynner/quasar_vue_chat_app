@@ -10,7 +10,11 @@
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 q-pa-sm">
         <q-input dense outlined v-model="otherPeerId" label="ID Remetente" :disable="status === 'CONNECTED'" >
           <template v-slot:after>
-            <q-btn outlined :label="status === 'CONNECTED' ? 'Desconectar' : 'Conectar'" @click="status === 'CONNECTED' ? disconnet() : connect()"/>
+            <q-btn
+              outlined
+              :label="status === 'CONNECTED' ? 'Desconectar' : 'Conectar'"
+              @click="status === 'CONNECTED' ? disconnet() : connect()"
+              :color="status === 'CONNECTED' ? 'positive' : 'primary'" />
           </template>
         </q-input>
       </div>
