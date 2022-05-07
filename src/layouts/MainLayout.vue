@@ -12,10 +12,10 @@
 <!--        />-->
 
         <q-toolbar-title>
-          Quasar App
+          Quasar Chat App
         </q-toolbar-title>
 
-        <div>Quasar v{{ $q.version }}</div>
+<!--        <div>App v{{ $q.version }}</div>-->
         <q-btn
           flat
           dense

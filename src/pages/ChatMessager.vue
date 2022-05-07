@@ -2,10 +2,22 @@
   <div class="q-pa-md">
     <div class="row">
       <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6 q-pa-sm">
-        <q-input dense outlined v-model="myId" label="Meu ID" readonly/>
+        <q-input ref="nome" dense outlined v-model="meuNome" label="Meu Nome" :disable="status === 'CONNECTED'" :rules="[val => !!val || 'Campo Obrigatório']" />
       </div>
       <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6 q-pa-sm">
-        <q-input dense outlined v-model="meuNome" label="Meu Nome" :disable="status === 'CONNECTED'" />
+        <q-input dense outlined v-model="myId" label="Meu ID" :readonly="peerStatus === 'ON'" >
+          <template v-slot:after>
+            <q-btn dense outline icon="sync" @click="gerarId" ><q-tooltip>Gerar ID</q-tooltip></q-btn>
+            <q-btn
+              dense
+              outline
+              :icon="peerStatus === 'ON' ? 'logout' : 'login'"
+              @click="peerStatus === 'ON' ? logout() : login()"
+              :color="peerStatus === 'ON' ? 'positive' : 'negative'">
+              <q-tooltip> {{ peerStatus === 'ON' ? 'Deslogar' : 'Logar' }}</q-tooltip>
+            </q-btn>
+          </template>
+        </q-input>
       </div>
       <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 q-pa-sm">
         <q-input dense outlined v-model="otherPeerId" label="ID Remetente" :disable="status === 'CONNECTED'" >
@@ -19,35 +31,10 @@
         </q-input>
       </div>
     </div>
-    <div style="width: 100%; height: calc(100vh - 330px);">
-      <template v-for="(mensagem, index) in mensagens">
+    <div class="chat-messages">
+      <template v-for="(mensagem, index) in mensagens" :key="`message_${index}`">
         <q-chat-message
-          v-if="mensagem.id === myId && mensagem.type === 'message'"
-          sent
-          :key="`sent_${index}`"
-          :name="mensagem.name"
-          avatar="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png"
-          :text="[mensagem.text]"
-          :stamp="mensagem.timestamp"
-          text-color="white"
-          bg-color="primary"
-        >
-        </q-chat-message>
-        <q-chat-message
-          v-if="mensagem.id !== myId && mensagem.type === 'message'"
-          :key="`receive_${index}`"
-          :name="mensagem.name"
-          avatar="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png"
-          :text="[mensagem.text]"
-          :stamp="mensagem.timestamp"
-          text-color="white"
-          bg-color="primary"
-        >
-        </q-chat-message>
-        <q-chat-message
-          v-if="mensagem.type === 'file'"
           :sent="mensagem.id === myId"
-          :key="`receive_file_${index}`"
           text-color="white"
           bg-color="primary"
         >
@@ -59,8 +46,11 @@
               src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__340.png"
             >
           </template>
+          <div v-if="mensagem.type === 'message'">
+            {{ mensagem.text }}
+          </div>
 
-          <div>
+          <div v-if="mensagem.type === 'file'">
             {{ mensagem.fileName }}
             <q-btn dense outline icon="download" @click="downloadFile(mensagem)"/>
           </div>
@@ -94,6 +84,7 @@
 <script>
 import Peer from 'peerjs'
 import { date } from 'quasar'
+import { uniqueKey } from 'src/util'
 export default {
   name: 'ChatMessager',
   props: {
@@ -103,34 +94,6 @@ export default {
     }
   },
   created () {
-    this.conn = new Peer()
-    this.model = this.value
-    this.conn.on('open', (id) => {
-      this.myId = id
-    })
-    this.conn.on('connection', (NACoon) => {
-      this.status = 'CONNECTED'
-      if (this.connection) {
-        this.connection.close()
-        this.status = 'DISCONNECTED'
-      }
-      this.otherPeerId = NACoon.peer
-      this.connection = NACoon
-      this.connection.on('data', (data) => {
-        this.mensagens.push(data)
-      })
-      this.connection.on('open', () => {
-        this.status = 'CONNECTED'
-      })
-      this.connection.on('close', () => {
-        this.status = 'DICONNECTED'
-      })
-      this.connection.send({ status: 'OK' })
-    })
-
-    this.conn.on('error', (err) => {
-      console.log('~> Err', err.type)
-    })
   },
   data: () => ({
     status: 'DISCONNECTED',
@@ -143,9 +106,64 @@ export default {
     arquivos: [],
     myId: null,
     meuNome: '',
-    otherPeerId: null
+    otherPeerId: null,
+    peerStatus: 'OFF'
   }),
   methods: {
+    createPeer () {
+      this.conn = new Peer(this.myId)
+      this.model = this.value
+      this.conn.on('open', () => {
+        this.peerStatus = 'ON'
+      })
+      this.conn.on('connection', (NACoon) => {
+        this.status = 'CONNECTED'
+        if (this.connection) {
+          this.connection.close()
+          this.status = 'DISCONNECTED'
+        }
+        this.otherPeerId = NACoon.peer
+        this.connection = NACoon
+        this.connection.on('data', (data) => {
+          this.mensagens.push(data)
+        })
+        this.connection.on('open', () => {
+          this.status = 'CONNECTED'
+        })
+        this.connection.on('close', () => {
+          this.status = 'DICONNECTED'
+        })
+        this.connection.send({ status: 'OK' })
+      })
+
+      this.conn.on('error', (err) => {
+        console.log('~> Err', err.type)
+      })
+
+      this.conn.on('disconnected', () => {
+        this.peerStatus = 'OFF'
+      })
+    },
+    gerarId () {
+      this.myId = uniqueKey()
+    },
+    login () {
+      if (!this.myId) {
+        this.myId = uniqueKey()
+      }
+      if (!this.$refs.nome.validate()) {
+        return
+      }
+      this.createPeer()
+    },
+    logout () {
+      if (this.conn) {
+        this.conn.disconnect()
+      }
+      if (this.connection) {
+        this.connection.close()
+      }
+    },
     downloadFile (data) {
       const link = document.createElement('a')
       link.href = URL.createObjectURL(new Blob([data.file], { type: data.fileType }))
@@ -168,6 +186,7 @@ export default {
           this.connection.send(mensagem)
           this.mensagens.push(mensagem)
         })
+        this.arquivos = []
         this.message = null
       }
     },
@@ -223,8 +242,11 @@ export default {
 </script>
 
 <style
-  lang="stylus"
+  lang="sass"
   scoped
 >
-
+.chat-messages
+  width: 100%
+  height: calc(100vh - 350px)
+  overflow: auto
 </style>
