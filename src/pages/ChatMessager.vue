@@ -34,7 +34,7 @@
     <div class="chat-messages">
       <template v-for="(mensagem, index) in mensagens" :key="`message_${index}`">
         <q-chat-message
-          :sent="mensagem.id === myId"
+          :sent="mensagem.type === 'sending' || mensagem.id === myId"
           text-color="white"
           bg-color="primary"
         >
@@ -52,7 +52,11 @@
 
           <div v-if="mensagem.type === 'file'">
             {{ mensagem.fileName }}
-            <q-btn dense outline icon="download" @click="downloadFile(mensagem)"/>
+            <q-btn dense outline icon="download" @click="downloadFile(mensagem)" />
+          </div>
+          <div v-if="mensagem.type === 'receiving' || mensagem.type === 'sending'">
+            {{ mensagem.fileName }}
+            <q-linear-progress dark stripe rounded size="20px" :value="mensagem.progress" color="red" class="q-mt-sm" />
           </div>
         </q-chat-message>
       </template>
@@ -85,6 +89,8 @@
 import Peer from 'peerjs'
 import { date } from 'quasar'
 import { uniqueKey } from 'src/util'
+import Send from 'peer-file/send'
+import Receive from 'peer-file/receive'
 export default {
   name: 'ChatMessager',
   props: {
@@ -125,10 +131,44 @@ export default {
         this.otherPeerId = NACoon.peer
         this.connection = NACoon
         this.connection.on('data', (data) => {
+          debugger
+          if (data.type === 'file:start') {
+            const mensagem = {
+              id: data.id,
+              type: 'receiving',
+              fileName: data.meta.name,
+              fileType: data.meta.name.type,
+              progress: 0
+            }
+            this.mensagens.push(mensagem)
+            return
+          }
+          if (data.type) {
+            return
+          }
           this.mensagens.push(data)
         })
         this.connection.on('open', () => {
           this.status = 'CONNECTED'
+          const $this = this
+          // Receive
+          Receive(NACoon)
+            .on('incoming', function (file) {
+              console.log('~> incoming')
+              setTimeout(() => {
+                console.log('~> accept')
+                this.accept(file) || this.reject(file)
+              }, 5000)
+            })
+            .on('progress', function (file, bytesReceived) {
+              console.log('~> progress', file)
+              console.log('~> Recebendo', Math.ceil(bytesReceived / file.size * 100))
+              const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
+              $this.mensagens[index].progress = (Math.ceil(bytesReceived / file.size * 100)) / 100
+            })
+            .on('complete', function (file) {
+              console.log('~> Complete', file)
+            })
         })
         this.connection.on('close', () => {
           this.status = 'DICONNECTED'
@@ -151,9 +191,7 @@ export default {
       if (!this.myId) {
         this.myId = uniqueKey()
       }
-      if (!this.$refs.nome.validate()) {
-        return
-      }
+      this.meuNome = this.myId
       this.createPeer()
     },
     logout () {
@@ -171,20 +209,30 @@ export default {
       link.click()
     },
     enviarArquivos () {
+      const $this = this
       if (this.connection) {
         this.arquivos.forEach((arquivo) => {
-          const mensagem = {
-            type: 'file',
-            id: this.myId,
-            timestamp: date.formatDate(new Date(), 'DD/MM/YYYY HH:mm'),
-            text: this.message,
-            name: this.meuNome,
-            file: arquivo,
-            fileName: arquivo.name,
-            fileType: arquivo.type
-          }
-          this.connection.send(mensagem)
-          this.mensagens.push(mensagem)
+          Send(this.connection, arquivo)
+            .on('progress', function (bytesSent) {
+              debugger
+              // console.log('~> Send File', arquivo, Math.ceil(bytesSent / arquivo.size * 100))
+              const index = $this.mensagens.findIndex((msg) => msg.__key === arquivo.__key)
+              if (index !== -1) {
+                $this.mensagens[index].progress = (Math.ceil(bytesSent / arquivo.size * 100)) / 100
+                return
+              }
+              const mensagem = {
+                __key: arquivo.__key,
+                type: 'sending',
+                fileName: arquivo.name,
+                fileType: arquivo.type,
+                progress: 0
+              }
+              $this.mensagens.push(mensagem)
+            })
+            .on('complete', function (event) {
+              console.log('~> complete', event)
+            })
         })
         this.arquivos = []
         this.message = null

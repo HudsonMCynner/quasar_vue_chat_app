@@ -7,6 +7,7 @@
 
 // Configuration for your app
 // https://v2.quasar.dev/quasar-cli-webpack/quasar-config-js
+const webpack = require('webpack')
 
 const ESLintPlugin = require('eslint-webpack-plugin')
 
@@ -52,6 +53,13 @@ module.exports = configure(function (ctx) {
     build: {
 
       extendWebpack (cfg) {
+        console.log('~> ', cfg)
+        cfg.plugins.push(// Work around for Buffer is undefined:
+          // https://github.com/webpack/changelog-v5/issues/10
+          new webpack.ProvidePlugin({
+            Buffer: ['buffer', 'Buffer']
+          })
+        )
         cfg.module = {
           ...cfg.module,
           exprContextCritical: false
