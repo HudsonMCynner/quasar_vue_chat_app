@@ -56,7 +56,11 @@
           </div>
           <div v-if="mensagem.type === 'receiving' || mensagem.type === 'sending'">
             {{ mensagem.fileName }}
-            <q-linear-progress dark stripe rounded size="20px" :value="mensagem.progress" color="red" class="q-mt-sm" />
+            <q-linear-progress stripe rounded size="20px" :value="mensagem.progress" color="red" class="q-mt-sm" >
+              <div class="absolute-full flex flex-center">
+                <q-badge color="white" text-color="accent" :label="`${Math.ceil(mensagem.progress * 100)}%`" />
+              </div>
+            </q-linear-progress>
           </div>
         </q-chat-message>
       </template>
@@ -89,8 +93,8 @@
 import Peer from 'peerjs'
 import { date } from 'quasar'
 import { uniqueKey } from 'src/util'
-import Send from 'peer-file/send'
-import Receive from 'peer-file/receive'
+import Send from 'src/util/peer-file/send'
+import Receive from 'src/util/peer-file/receive'
 export default {
   name: 'ChatMessager',
   props: {
@@ -100,6 +104,7 @@ export default {
     }
   },
   created () {
+    // this.login()
   },
   data: () => ({
     status: 'DISCONNECTED',
@@ -131,7 +136,6 @@ export default {
         this.otherPeerId = NACoon.peer
         this.connection = NACoon
         this.connection.on('data', (data) => {
-          debugger
           if (data.type === 'file:start') {
             const mensagem = {
               id: data.id,
@@ -143,7 +147,7 @@ export default {
             this.mensagens.push(mensagem)
             return
           }
-          if (data.type) {
+          if (data.type !== 'message' && data.type !== 'file') {
             return
           }
           this.mensagens.push(data)
@@ -154,20 +158,24 @@ export default {
           // Receive
           Receive(NACoon)
             .on('incoming', function (file) {
-              console.log('~> incoming')
-              setTimeout(() => {
-                console.log('~> accept')
-                this.accept(file) || this.reject(file)
-              }, 5000)
+              // setTimeout(() => {
+              //   this.accept(file) || this.reject(file)
+              // }, 5000)
+              this.accept(file) || this.reject(file)
             })
             .on('progress', function (file, bytesReceived) {
-              console.log('~> progress', file)
-              console.log('~> Recebendo', Math.ceil(bytesReceived / file.size * 100))
               const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
               $this.mensagens[index].progress = (Math.ceil(bytesReceived / file.size * 100)) / 100
             })
             .on('complete', function (file) {
-              console.log('~> Complete', file)
+              const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
+              $this.mensagens.splice(index, 1, {
+                id: $this.otherPeerId,
+                type: 'file',
+                file: new Blob(file.data, { type: file.Type }),
+                fileName: file.name,
+                fileType: file.type
+              })
             })
         })
         this.connection.on('close', () => {
@@ -204,7 +212,7 @@ export default {
     },
     downloadFile (data) {
       const link = document.createElement('a')
-      link.href = URL.createObjectURL(new Blob([data.file], { type: data.fileType }))
+      link.href = URL.createObjectURL(data.file)
       link.download = data.fileName
       link.click()
     },
@@ -214,7 +222,6 @@ export default {
         this.arquivos.forEach((arquivo) => {
           Send(this.connection, arquivo)
             .on('progress', function (bytesSent) {
-              debugger
               // console.log('~> Send File', arquivo, Math.ceil(bytesSent / arquivo.size * 100))
               const index = $this.mensagens.findIndex((msg) => msg.__key === arquivo.__key)
               if (index !== -1) {
@@ -230,8 +237,15 @@ export default {
               }
               $this.mensagens.push(mensagem)
             })
-            .on('complete', function (event) {
-              console.log('~> complete', event)
+            .on('complete', function (file) {
+              const index = $this.mensagens.findIndex((msg) => msg.__key === arquivo.__key)
+              $this.mensagens.splice(index, 1, {
+                id: $this.myId,
+                type: 'file',
+                file: new Blob(file.data, { type: file.Type }),
+                fileName: file.name,
+                fileType: file.type
+              })
             })
         })
         this.arquivos = []
@@ -267,10 +281,47 @@ export default {
         }
         this.connection = this.conn.connect(this.otherPeerId.trim())
         this.connection.on('data', (data) => {
+          if (data.type === 'file:start') {
+            const mensagem = {
+              id: data.id,
+              type: 'receiving',
+              fileName: data.meta.name,
+              fileType: data.meta.name.type,
+              progress: 0
+            }
+            this.mensagens.push(mensagem)
+            return
+          }
+          if (data.type !== 'message' && data.type !== 'file') {
+            return
+          }
           this.mensagens.push(data)
         })
         this.connection.on('open', () => {
+          const $this = this
           this.status = 'CONNECTED'
+          // Receive
+          Receive(this.connection)
+            .on('incoming', function (file) {
+              // setTimeout(() => {
+              //   this.accept(file) || this.reject(file)
+              // }, 5000)
+              this.accept(file) || this.reject(file)
+            })
+            .on('progress', function (file, bytesReceived) {
+              const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
+              $this.mensagens[index].progress = (Math.ceil(bytesReceived / file.size * 100)) / 100
+            })
+            .on('complete', function (file) {
+              const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
+              $this.mensagens.splice(index, 1, {
+                id: $this.otherPeerId,
+                type: 'file',
+                file: new Blob(file.data, { type: file.Type }),
+                fileName: file.name,
+                fileType: file.type
+              })
+            })
         })
         this.connection.on('close', () => {
           this.status = 'DICONNECTED'

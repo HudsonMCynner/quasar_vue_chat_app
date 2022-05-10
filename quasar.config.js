@@ -53,7 +53,6 @@ module.exports = configure(function (ctx) {
     build: {
 
       extendWebpack (cfg) {
-        console.log('~> ', cfg)
         cfg.plugins.push(// Work around for Buffer is undefined:
           // https://github.com/webpack/changelog-v5/issues/10
           new webpack.ProvidePlugin({
