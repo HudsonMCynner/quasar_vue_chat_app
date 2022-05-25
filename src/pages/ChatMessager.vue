@@ -105,6 +105,16 @@ export default {
   },
   created () {
     // this.login()
+    debugger
+    this.$localDataBase.saveOrUpdateOne('chatMessages', {
+      remetente: 1,
+      destinatario: 2,
+      timestamp: new Date(),
+      jsonData: { message: 'askdlfaskdas' }
+    })
+      .then((response) => {
+        console.log('~> Registro adicionado', response)
+      })
   },
   data: () => ({
     status: 'DISCONNECTED',

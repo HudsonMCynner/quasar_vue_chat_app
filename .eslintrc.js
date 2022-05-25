@@ -73,6 +73,7 @@ module.exports = {
     "vue/multi-word-component-names": 'off',
 
     'prefer-promise-reject-errors': 'off',
+    "prefer-const": 'off',
 
     // allow debugger during development only
     'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off'
