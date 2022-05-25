@@ -104,16 +104,20 @@ export default {
     }
   },
   created () {
-    // this.login()
-    debugger
-    this.$localDataBase.saveOrUpdateOne('chatMessages', {
-      remetente: 1,
-      destinatario: 2,
-      timestamp: new Date(),
-      jsonData: { message: 'askdlfaskdas' }
-    })
+    this.login()
+    // this.$localDataBase.saveOrUpdateOne('chatMessages', {
+    //   remetente: 1,
+    //   destinatario: 2,
+    //   timestamp: new Date(),
+    //   jsonData: { message: 'askdlfaskdas' }
+    // })
+    //   .then((response) => {
+    //     console.log('~> Registro adicionado', response)
+    //   })
+
+    this.$localDataBase.getDataBase('chatMessages').toArray()
       .then((response) => {
-        console.log('~> Registro adicionado', response)
+        console.log('~> ', response)
       })
   },
   data: () => ({
@@ -178,14 +182,24 @@ export default {
               $this.mensagens[index].progress = (Math.ceil(bytesReceived / file.size * 100)) / 100
             })
             .on('complete', function (file) {
-              const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
-              $this.mensagens.splice(index, 1, {
+              let message = {
                 id: $this.otherPeerId,
                 type: 'file',
-                file: new Blob(file.data, { type: file.Type }),
+                file: null,
                 fileName: file.name,
                 fileType: file.type
+              }
+              $this.$localDataBase.saveOrUpdateOne('chatMessages', {
+                remetente: 1,
+                destinatario: 2,
+                timestamp: new Date(),
+                jsonData: { ...message, file }
               })
+                .then((response) => {
+                  message.file = response
+                  const index = $this.mensagens.findIndex((msg) => msg.id === file.id)
+                  $this.mensagens.splice(index, 1, message)
+                })
             })
         })
         this.connection.on('close', () => {
@@ -248,14 +262,24 @@ export default {
               $this.mensagens.push(mensagem)
             })
             .on('complete', function (file) {
-              const index = $this.mensagens.findIndex((msg) => msg.__key === arquivo.__key)
-              $this.mensagens.splice(index, 1, {
+              let message = {
                 id: $this.myId,
                 type: 'file',
-                file: new Blob(file.data, { type: file.Type }),
+                file: null,
                 fileName: file.name,
                 fileType: file.type
+              }
+              $this.$localDataBase.saveOrUpdateOne('chatMessages', {
+                remetente: 1,
+                destinatario: 2,
+                timestamp: new Date(),
+                jsonData: { ...message, file }
               })
+                .then((response) => {
+                  message.file = response
+                  const index = $this.mensagens.findIndex((msg) => msg.__key === arquivo.__key)
+                  $this.mensagens.splice(index, 1, message)
+                })
             })
         })
         this.arquivos = []
