@@ -210,7 +210,7 @@ export default {
         this.connection.close()
       }
     },
-    downloadFile (data) {
+    a (data) {
       const link = document.createElement('a')
       link.href = URL.createObjectURL(data.file)
       link.download = data.fileName
@@ -270,6 +270,12 @@ export default {
     },
     disconnet () {
       this.connection.close()
+    },
+    downloadFile (message) {
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(message.file)
+      link.download = message.fileName
+      link.click()
     },
     connect () {
       if (this.otherPeerId === this.myId) {
